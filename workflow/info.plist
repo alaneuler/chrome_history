@@ -104,7 +104,7 @@
 		</dict>
 	</array>
 	<key>readme</key>
-	<string></string>
+	<string>Search Chrome history and open in browser (the searching includes title and URL).</string>
 	<key>uidata</key>
 	<dict>
 		<key>13E45E32-0BCE-4359-835E-76E5FDAE1471</key>
@@ -127,7 +127,7 @@
 	<key>variablesdontexport</key>
 	<array/>
 	<key>version</key>
-	<string>1.0.0</string>
+	<string>1.0.1</string>
 	<key>webaddress</key>
 	<string></string>
 </dict>
