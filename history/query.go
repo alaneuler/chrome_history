@@ -2,6 +2,7 @@ package history
 
 import (
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,8 +32,8 @@ func init() {
 	}
 
 	home, _ := os.UserHomeDir()
-	historyDatabasePath = "file://" + filepath.Join(home, chromePath, profile, "History")
-	faviconDatabasePath = "file://" + filepath.Join(home, chromePath, profile, "Favicons")
+	historyDatabasePath = filepath.Join(home, chromePath, profile, "History")
+	faviconDatabasePath = filepath.Join(home, chromePath, profile, "Favicons")
 }
 
 func Query(query string, limit int) []*Entry {
@@ -82,8 +83,20 @@ func toEntries(daoList []*EntryDao) []*Entry {
 	return entries
 }
 
+func encodePath(path string) string {
+	dsn, _ := url.Parse(path)
+	dsn.Scheme = "file"
+	q := dsn.Query()
+	q.Set("mode", "ro")
+	q.Set("immutable", "1")
+	q.Set("_query_only", "1")
+	dsn.RawQuery = q.Encode()
+	return dsn.String()
+}
+
 func openHistoryDb() (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open(historyDatabasePath), &gorm.Config{})
+	path := encodePath(historyDatabasePath)
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +104,8 @@ func openHistoryDb() (*gorm.DB, error) {
 }
 
 func openFaviconDb() (*gorm.DB, error) {
-	db, err := gorm.Open(sqlite.Open(faviconDatabasePath), &gorm.Config{})
+	path := encodePath(faviconDatabasePath)
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
