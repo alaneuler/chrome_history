@@ -15,8 +15,7 @@ type IconMappingDao struct {
 	IconId  int64
 }
 
-type IconBitmapDao struct {
-	ID        int64
-	IconId    int64
-	ImageData []byte
+type FaviconsDao struct {
+	ID  int64
+	URL string
 }

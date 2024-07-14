@@ -1,11 +1,10 @@
 package history
 
 import (
-	"bytes"
 	"fmt"
-	"image"
-	"image/png"
+	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -15,8 +14,8 @@ import (
 )
 
 const (
-	iconsTableName   = "icon_mapping"
-	bitmapsTableName = "favicon_bitmaps"
+	iconMappingTableName = "icon_mapping"
+	faviconsTableName    = "favicons"
 )
 
 var (
@@ -45,11 +44,11 @@ func ObtainIcon(db *gorm.DB, entryDao *EntryDao) *aw.Icon {
 	}
 
 	var iconMapping IconMappingDao
-	db.Table(iconsTableName).Where("page_url = ?", entryDao.URL).Find(&iconMapping)
+	db.Table(iconMappingTableName).Where("page_url = ?", entryDao.URL).Find(&iconMapping)
 	if iconMapping.ID > 0 {
-		var iconBitmap IconBitmapDao
-		db.Table(bitmapsTableName).Where("icon_id = ?", iconMapping.IconId).First(&iconBitmap)
-		icon, err := doObtainIcon(iconBitmap)
+		var faviconsDao FaviconsDao
+		db.Table(faviconsTableName).Where("id = ?", iconMapping.IconId).First(&faviconsDao)
+		icon, err := doObtainIcon(faviconsDao)
 		if err != nil {
 			slog.Error("Failed to obtain icon from database:", "error", err)
 			return nil
@@ -59,27 +58,29 @@ func ObtainIcon(db *gorm.DB, entryDao *EntryDao) *aw.Icon {
 	return nil
 }
 
-func doObtainIcon(dao IconBitmapDao) (*aw.Icon, error) {
-	imagePath := filepath.Join(cacheDir, strconv.FormatInt(dao.IconId, 10))
+func doObtainIcon(dao FaviconsDao) (*aw.Icon, error) {
+	imagePath := filepath.Join(cacheDir, strconv.FormatInt(dao.ID, 10))
 	if PathExists(imagePath) {
 		return &aw.Icon{
 			Value: imagePath,
 		}, nil
 	}
 
-	img, _, err := image.Decode(bytes.NewReader(dao.ImageData))
+	response, err := http.Get(dao.URL)
 	if err != nil {
-		return nil, fmt.Errorf("decode image failed: %w", err)
+		return nil, fmt.Errorf("failed to obtain icon from URL: %s, error: %w", dao.URL, err)
 	}
+	defer response.Body.Close()
+
 	file, err := os.Create(imagePath)
 	if err != nil {
 		return nil, fmt.Errorf("create image file failed: %w", err)
 	}
 	defer file.Close()
 
-	err = png.Encode(file, img)
+	_, err = io.Copy(file, response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("encode image failed: %w", err)
+		return nil, fmt.Errorf("copy to file failed: %w", err)
 	}
 	return &aw.Icon{
 		Value: imagePath,
