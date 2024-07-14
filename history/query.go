@@ -19,7 +19,7 @@ const (
 	tableName      = "urls"
 )
 
-func Query(query string) []*Entry {
+func Query(query string, limit int) []*Entry {
 	db, err := open()
 	if err != nil {
 		slog.Error("Open Chrome history database", "error", err)
@@ -32,6 +32,9 @@ func Query(query string) []*Entry {
 		titleOrUrl := "%" + query + "%"
 		slog.Info("Starting query:", "titleOrUrl", titleOrUrl)
 		db = db.Where("title like ? or url like ?", titleOrUrl, titleOrUrl)
+	}
+	if limit > 0 {
+		db = db.Limit(limit)
 	}
 
 	var entries []*EntryDao

@@ -9,7 +9,7 @@ import (
 )
 
 func runWithAlfred(wf *aw.Workflow) {
-	entries := history.Query(strings.Join(wf.Args(), " "))
+	entries := history.Query(strings.Join(wf.Args(), " "), 0)
 	if len(entries) == 0 {
 		wf.NewItem("No history entries found")
 	} else {
