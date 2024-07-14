@@ -1,12 +1,15 @@
 package main
 
 import (
-	"fmt"
+	"os"
 
 	"me.alaneuler/chrome_history/history"
 )
 
 func main() {
-	entries := history.Query()
-	fmt.Println(entries)
+	if os.Getenv("alfred_workflow_bundleid") != "" {
+		run()
+	} else {
+		history.Query("")
+	}
 }

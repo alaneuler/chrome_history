@@ -3,37 +3,70 @@ package history
 import (
 	"log/slog"
 	"net/url"
+	"os"
+	"path"
+	"path/filepath"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 const (
-	dbLoc     = "/Users/alaneuler/Library/Application Support/Google/Chrome/Default/History"
-	tableName = "urls"
+	profileKey     = "CHROME_PROFILE"
+	defaultProfile = "Default"
+	chromeLoc      = "~/Library/Application Support/Google/Chrome"
+	dbFile         = "History"
+	tableName      = "urls"
 )
 
-func Query() []*Entry {
+func Query(query string) []*Entry {
 	db, err := open()
 	if err != nil {
-		slog.Error("Open Chrome history database error", err)
+		slog.Error("Open Chrome history database", "error", err)
 		return nil
 	}
 
-	var entries []*EntryDao
-	db.Where("visit_count > 0").Where("hidden = 0").Order("last_visit_time desc").Find(&entries)
+	db = db.Where("visit_count > 0").Where("hidden = 0")
+	db = db.Order("last_visit_time desc")
+	if query != "" {
+		titleOrUrl := "%" + query + "%"
+		slog.Info("Starting query:", "titleOrUrl", titleOrUrl)
+		db = db.Where("title like ? or url like ?", titleOrUrl, titleOrUrl)
+	}
 
+	var entries []*EntryDao
+	db.Find(&entries)
 	return ToEntries(entries)
 }
 
+func obtainHistoryDbFile() (string, error) {
+	profile := os.Getenv(profileKey)
+	if profile == "" {
+		profile = defaultProfile
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	loc := filepath.Join(home, chromeLoc[2:])
+	uri, err := url.Parse(loc)
+	if err != nil {
+		return "", err
+	}
+
+	uri.Path = path.Join(uri.Path, profile, dbFile)
+	uri.Scheme = "file"
+	return uri.String(), nil
+}
+
 func open() (*gorm.DB, error) {
-	dsn, err := url.Parse(dbLoc)
+	loc, err := obtainHistoryDbFile()
 	if err != nil {
 		return nil, err
 	}
 
-	dsn.Scheme = "file"
-	db, err := gorm.Open(sqlite.Open(dsn.String()), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(loc), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
