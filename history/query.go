@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -64,10 +65,19 @@ func toEntries(daoList []*EntryDao) []*Entry {
 	}
 
 	var entries []*Entry
+	m := make(map[string]int)
 	for _, dao := range daoList {
-		entry := toEntry(dao)
-		entry.Icon = ObtainIcon(db, dao)
-		entries = append(entries, entry)
+		if strings.HasPrefix(dao.URL, "http://") {
+			continue
+		}
+
+		if _, ok := m[dao.URL]; !ok {
+			m[dao.URL] = 1
+
+			entry := toEntry(dao)
+			entry.Icon = ObtainIcon(db, dao)
+			entries = append(entries, entry)
+		}
 	}
 	return entries
 }

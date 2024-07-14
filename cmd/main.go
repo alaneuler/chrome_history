@@ -11,7 +11,7 @@ func main() {
 	if os.Getenv("alfred_workflow_bundleid") != "" {
 		run()
 	} else {
-		entries := history.Query("mone", 5)
+		entries := history.Query("textservice", 5)
 		for _, entry := range entries {
 			fmt.Println(entry)
 		}

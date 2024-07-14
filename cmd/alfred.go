@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"strconv"
 	"strings"
 
@@ -9,7 +10,13 @@ import (
 )
 
 func runWithAlfred(wf *aw.Workflow) {
-	entries := history.Query(strings.Join(wf.Args(), " "), 0)
+	limit := 100
+	limitConfig := os.Getenv("LIMIT")
+	if limitConfig != "" {
+		limit, _ = strconv.Atoi(limitConfig)
+	}
+
+	entries := history.Query(strings.Join(wf.Args(), " "), limit)
 	if len(entries) == 0 {
 		wf.NewItem("No history entries found")
 	} else {
