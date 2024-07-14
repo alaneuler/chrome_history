@@ -1,12 +1,14 @@
 PROJECT=chrome-history
 
-.PHONY: build clean
+.PHONY: build clean dist
 
 build:
 	mkdir -p ./build
 	go build -o build/$(PROJECT) ./cmd/
-	cp workflow/* ./build
-	cd build && zip chrome-history.alfredworkflow *
 
 clean:
 	rm -rf build/*
+
+dist: build
+	cp workflow/* ./build
+	cd build && zip ../chrome-history.alfredworkflow *
