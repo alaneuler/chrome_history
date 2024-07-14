@@ -3,7 +3,7 @@ Search Chrome history and open in browser (the searching includes title and URL)
 
 Key word `ch`:
 
-<img src="./screenshots/screenshot.png" style="zoom:40%;" />
+<img src="./screenshots/screenshot.png" width="500" />
 
 ## Profile
 1. Open workflow in Alfred preferences
