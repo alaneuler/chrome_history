@@ -19,6 +19,7 @@ func runWithAlfred(wf *aw.Workflow) {
 			item.Subtitle(entry.URL)
 			item.Arg(entry.URL)
 			item.Valid(true)
+			item.Icon(entry.Icon)
 		}
 	}
 	wf.SendFeedback()

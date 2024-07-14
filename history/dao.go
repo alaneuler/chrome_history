@@ -8,3 +8,15 @@ type EntryDao struct {
 	LastVisitTime int64
 	hidden        int64
 }
+
+type IconMappingDao struct {
+	ID      int64
+	PageURL string
+	IconId  int64
+}
+
+type IconBitmapDao struct {
+	ID        int64
+	IconId    int64
+	ImageData []byte
+}

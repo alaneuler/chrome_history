@@ -2,9 +2,7 @@ package history
 
 import (
 	"log/slog"
-	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 
 	"gorm.io/driver/sqlite"
@@ -14,13 +12,30 @@ import (
 const (
 	profileKey     = "CHROME_PROFILE"
 	defaultProfile = "Default"
-	chromeLoc      = "~/Library/Application Support/Google/Chrome"
-	dbFile         = "History"
-	tableName      = "urls"
+
+	chromePath = "Library/Application Support/Google/Chrome"
+
+	historyTableName = "urls"
 )
 
+var (
+	historyDatabasePath string
+	faviconDatabasePath string
+)
+
+func init() {
+	profile := os.Getenv(profileKey)
+	if profile == "" {
+		profile = defaultProfile
+	}
+
+	home, _ := os.UserHomeDir()
+	historyDatabasePath = "file://" + filepath.Join(home, chromePath, profile, "History")
+	faviconDatabasePath = "file://" + filepath.Join(home, chromePath, profile, "Favicons")
+}
+
 func Query(query string, limit int) []*Entry {
-	db, err := open()
+	db, err := openHistoryDb()
 	if err != nil {
 		slog.Error("Open Chrome history database", "error", err)
 		return nil
@@ -39,39 +54,36 @@ func Query(query string, limit int) []*Entry {
 
 	var entries []*EntryDao
 	db.Find(&entries)
-	return ToEntries(entries)
+	return toEntries(entries)
 }
 
-func obtainHistoryDbFile() (string, error) {
-	profile := os.Getenv(profileKey)
-	if profile == "" {
-		profile = defaultProfile
+func toEntries(daoList []*EntryDao) []*Entry {
+	db, err := openFaviconDb()
+	if err != nil {
+		slog.Error("Open Favicon database", "error", err)
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
+	var entries []*Entry
+	for _, dao := range daoList {
+		entry := toEntry(dao)
+		entry.Icon = ObtainIcon(db, dao)
+		entries = append(entries, entry)
 	}
-	loc := filepath.Join(home, chromeLoc[2:])
-	uri, err := url.Parse(loc)
-	if err != nil {
-		return "", err
-	}
-
-	uri.Path = path.Join(uri.Path, profile, dbFile)
-	uri.Scheme = "file"
-	return uri.String(), nil
+	return entries
 }
 
-func open() (*gorm.DB, error) {
-	loc, err := obtainHistoryDbFile()
+func openHistoryDb() (*gorm.DB, error) {
+	db, err := gorm.Open(sqlite.Open(historyDatabasePath), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
+	return db.Table(historyTableName), nil
+}
 
-	db, err := gorm.Open(sqlite.Open(loc), &gorm.Config{})
+func openFaviconDb() (*gorm.DB, error) {
+	db, err := gorm.Open(sqlite.Open(faviconDatabasePath), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
-	return db.Table(tableName), nil
+	return db, nil
 }

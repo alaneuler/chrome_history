@@ -1,6 +1,10 @@
 package history
 
-import "time"
+import (
+	"time"
+
+	aw "github.com/deanishe/awgo"
+)
 
 type Entry struct {
 	ID            int64
@@ -9,6 +13,7 @@ type Entry struct {
 	VisitCount    int64
 	LastVisitTime time.Time
 	hidden        int64
+	Icon          *aw.Icon
 }
 
 func toEntry(dao *EntryDao) *Entry {
@@ -20,12 +25,4 @@ func toEntry(dao *EntryDao) *Entry {
 		LastVisitTime: ConvertChromeTime(dao.LastVisitTime),
 		hidden:        dao.hidden,
 	}
-}
-
-func ToEntries(daoList []*EntryDao) []*Entry {
-	var entries []*Entry
-	for _, dao := range daoList {
-		entries = append(entries, toEntry(dao))
-	}
-	return entries
 }
