@@ -15,8 +15,13 @@ func runWithAlfred(wf *aw.Workflow) {
 	if limitConfig != "" {
 		limit, _ = strconv.Atoi(limitConfig)
 	}
+	parallel := true
+	parallelConfig := os.Getenv("PARALLEL")
+	if parallelConfig != "" {
+		parallel, _ = strconv.ParseBool(parallelConfig)
+	}
 
-	entries := history.Query(strings.Join(wf.Args(), " "), limit)
+	entries := history.Query(strings.Join(wf.Args(), " "), limit, parallel)
 	if len(entries) == 0 {
 		wf.NewItem("No history entries found")
 	} else {

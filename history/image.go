@@ -37,6 +37,7 @@ func init() {
 	}
 }
 
+// ObtainIcon get the image according to the entryDao info.
 func ObtainIcon(db *gorm.DB, entryDao *EntryDao) *aw.Icon {
 	if !hasCache || db == nil {
 		slog.Error("No cache capability!")

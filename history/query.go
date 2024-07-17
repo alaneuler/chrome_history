@@ -5,7 +5,10 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -36,7 +39,7 @@ func init() {
 	faviconDatabasePath = filepath.Join(home, chromePath, profile, "Favicons")
 }
 
-func Query(query string, limit int) []*Entry {
+func Query(query string, limit int, parallel bool) []*Entry {
 	db, err := openHistoryDb()
 	if err != nil {
 		slog.Error("Open Chrome history database", "error", err)
@@ -56,30 +59,73 @@ func Query(query string, limit int) []*Entry {
 
 	var entries []*EntryDao
 	db.Find(&entries)
+	entries = filter(entries)
+	if parallel {
+		return toEntriesParallel(entries)
+	}
 	return toEntries(entries)
 }
 
+func filter(daoList []*EntryDao) []*EntryDao {
+	var rtn []*EntryDao
+	for _, dao := range daoList {
+		if strings.HasPrefix(dao.URL, "http://") {
+			continue
+		}
+
+		rtn = append(rtn, dao)
+	}
+	return rtn
+}
+
 func toEntries(daoList []*EntryDao) []*Entry {
+	slog.Info("toEntries sequentially", "len", len(daoList))
+	start := time.Now()
 	db, err := openFaviconDb()
 	if err != nil {
 		slog.Error("Open Favicon database", "error", err)
 	}
 
 	var entries []*Entry
-	m := make(map[string]int)
 	for _, dao := range daoList {
-		if strings.HasPrefix(dao.URL, "http://") {
-			continue
-		}
+		entry := toEntry(dao)
+		entry.Icon = ObtainIcon(db, dao)
+		entries = append(entries, entry)
+	}
+	slog.Info("toEntries", "elapsed", time.Since(start))
+	return entries
+}
 
-		if _, ok := m[dao.URL]; !ok {
-			m[dao.URL] = 1
+func toEntriesParallel(daoList []*EntryDao) []*Entry {
+	slog.Info("toEntriesParallel", "len", len(daoList))
+	start := time.Now()
+	db, err := openFaviconDb()
+	if err != nil {
+		slog.Error("Open Favicon database", "error", err)
+	}
+
+	var entries []*Entry
+	mu := sync.Mutex{}
+	var wg sync.WaitGroup
+	for _, dao := range daoList {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			mu.Lock()
+			defer mu.Unlock()
 
 			entry := toEntry(dao)
 			entry.Icon = ObtainIcon(db, dao)
 			entries = append(entries, entry)
-		}
+		}()
 	}
+	wg.Wait()
+	slog.Info("toEntriesParallel", "elapsed", time.Since(start))
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].LastVisitTime.After(entries[j].LastVisitTime)
+	})
 	return entries
 }
 
