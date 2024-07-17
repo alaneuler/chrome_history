@@ -4,7 +4,7 @@ PROJECT=chrome-history
 
 build:
 	mkdir -p ./build
-	go build -o build/$(PROJECT) ./cmd/
+	go build -ldflags "-s -w" -o build/$(PROJECT) ./cmd/
 
 clean:
 	rm -rf build/*
